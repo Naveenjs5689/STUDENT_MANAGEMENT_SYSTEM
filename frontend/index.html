@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="header-content">
+            <h1>Student Management System</h1>
+            <p>Manage student records and academic years</p>
+            <div id="sessionControls" class="session-controls" hidden>
+                <span id="loggedInLabel"></span>
+                <button type="button" id="logoutBtn" class="secondary-button">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <section class="panel login-panel container" id="loginPanel">
+        <h2>Login</h2>
+        <form id="loginForm" class="login-form">
+            <div class="form-field">
+                <label for="loginUsername">Username</label>
+                <input id="loginUsername" autocomplete="username" required placeholder="Enter username">
+            </div>
+            <div class="form-field">
+                <label for="loginPassword">Password</label>
+                <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter password">
+            </div>
+            <button type="submit" class="primary-button">Login</button>
+        </form>
+        <p id="loginMessage" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <main class="container" id="appContent" hidden>
+        <!-- Dashboard cards -->
+        <section class="dashboard-cards" aria-label="Student dashboard">
+            <div class="dashboard-card clickable-card" data-filter="all" role="button" tabindex="0" title="Click to view all students">
+                <div class="card-icon" aria-hidden="true">👨‍🎓</div>
+                <div>
+                    <h3>Total Students</h3>
+                    <p id="totalCount">0</p>
+                </div>
+            </div>
+
+            <div class="dashboard-card current-card clickable-card" data-filter="current" role="button" tabindex="0" title="Click to view current students">
+                <div class="card-icon" aria-hidden="true">🎓</div>
+                <div>
+                    <h3>Current Students</h3>
+                    <p id="currentCount">0</p>
+                </div>
+            </div>
+
+            <div class="dashboard-card passed-card clickable-card" data-filter="passed" role="button" tabindex="0" title="Click to view passed out students">
+                <div class="card-icon" aria-hidden="true">🏆</div>
+                <div>
+                    <h3>Passed Out Students</h3>
+                    <p id="passedCount">0</p>
+                </div>
+            </div>
+
+            <div class="dashboard-card cs-card clickable-card" data-filter="cs" role="button" tabindex="0" title="Click to view Computer Science students">
+                <div class="card-icon" aria-hidden="true">💻</div>
+                <div>
+                    <h3>Computer Science</h3>
+                    <p id="csCount">0</p>
+                </div>
+            </div>
+
+            <button type="button" class="dashboard-card other-card"
+                    id="otherDashboardBtn"
+                    aria-expanded="false"
+                    aria-controls="otherDepartmentPanel">
+                <div class="card-icon" aria-hidden="true">📚</div>
+                <div>
+                    <h3>Other Departments</h3>
+                    <p id="otherCount">0</p>
+                    <span>Click to view departments</span>
+                </div>
+            </button>
+        </section>
+
+        <!-- Other Department Dashboard -->
+        <section class="panel" id="otherDepartmentPanel" hidden>
+            <h2>Other Department Dashboard</h2>
+            <p>Department-wise student counts</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Department</th>
+                            <th>Total Students</th>
+                            <th>Current Students</th>
+                            <th>Passed Out Students</th>
+                        </tr>
+                    </thead>
+                    <tbody id="otherDepartmentTable"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Student Registration -->
+        <section class="panel">
+            <div class="section-heading">
+                <div>
+                    <h2 id="formTitle">Add Student</h2>
+                    <p>Enter student details and academic year.</p>
+                </div>
+            </div>
+
+            <form id="studentForm">
+                <div class="form-field">
+                    <label for="studentId">Student ID *</label>
+                    <input type="text" id="studentId" placeholder="e.g. STU001" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="firstName">First Name *</label>
+                    <input type="text" id="firstName" placeholder="First name" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="lastName">Last Name *</label>
+                    <input type="text" id="lastName" placeholder="Last name" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="dob">Date of Birth *</label>
+                    <input type="date" id="dob" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" placeholder="Auto-calculated" readonly>
+                </div>
+
+                <div class="form-field">
+                    <label for="phone">Phone Number *</label>
+                    <input type="tel" id="phone" inputmode="numeric"
+                           pattern="[0-9]{10}" maxlength="10"
+                           placeholder="10-digit phone number" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="group">Group *</label>
+                    <input type="text" id="group" placeholder="e.g. Computer Science" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="department">Department *</label>
+                    <input type="text" id="department" placeholder="e.g. BCA" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="academicYear">Academic Year *</label>
+                    <input type="text" id="academicYear"
+                           placeholder="e.g. 2024-26"
+                           pattern="[0-9]{4}-[0-9]{2,4}"
+                           title="Enter academic year like 2024-26 or 2024-2026"
+                           required>
+                    <small>Format: 2024-26 or 2024-2026</small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="submitStudentBtn" class="primary-button">Add Student</button>
+                    <button type="button" id="cancelEditBtn" class="secondary-button" hidden>Cancel Edit</button>
+                    <button type="reset" id="clearFormBtn" class="secondary-button">Clear Form</button>
+                </div>
+            </form>
+            <p id="message" class="message" role="status" aria-live="polite"></p>
+        </section>
+
+        <!-- Student Records -->
+        <section class="panel">
+            <div class="records-heading">
+                <div>
+                    <h2 id="studentDetailsTitle">Student Details</h2>
+                    <p id="recordCount">0 records</p>
+                    <div class="records-actions">
+                        <button type="button" id="clearFilterBtn" class="secondary-button" hidden>Show All Students</button>
+                        <button type="button" id="exportExcelBtn" class="primary-button">Export to Excel</button>
+                    </div>
+                </div>
+                <input type="search" id="searchInput" class="search-input"
+                       placeholder="Search students..." aria-label="Search students">
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                            <th>DOB</th>
+                            <th>Age</th>
+                            <th>Phone No.</th>
+                            <th>Group</th>
+                            <th>Department</th>
+                            <th>Academic Year</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTable">
+                        <tr><td class="empty-state" colspan="11">No students added yet.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <p class="note">Note: This demo saves records in this browser. For permanent shared records, connect it to a backend and database.</p>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
