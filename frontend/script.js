@@ -5,11 +5,14 @@ const searchInput = document.getElementById("searchInput");
 const dobInput = document.getElementById("dob");
 const ageInput = document.getElementById("age");
 
-const STORAGE_KEY = "studentManagementRecords";
-let students = loadStudents();
+
+const API_BASE = "http://localhost:8082/api";
+
+let students = [];
 let dashboardFilter = "all";
 let editingStudentId = null;
 let currentRole = null;
+let authToken = null;
 
 const loginPanel = document.getElementById("loginPanel");
 const appContent = document.getElementById("appContent");
@@ -17,58 +20,114 @@ const sessionControls = document.getElementById("sessionControls");
 const loggedInLabel = document.getElementById("loggedInLabel");
 const exportButton = document.getElementById("exportExcelBtn");
 
-// Demo credentials only. Secure authentication must be implemented on a backend.
-document.getElementById("loginForm").addEventListener("submit", event => {
+async function apiRequest(path, options = {}) {
+    const headers = {
+        "Content-Type": "application/json",
+        ...(authToken
+            ? { Authorization: `Bearer ${authToken}` }
+            : {}),
+        ...(options.headers || {})
+    };
+
+    const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers
+    });
+
+    if (!response.ok) {
+        let detail = `Request failed (${response.status})`;
+
+        try {
+            const data = await response.json();
+            detail = data.message || data.detail || detail;
+        } catch (_) {}
+
+        throw new Error(detail);
+    }
+
+    if (response.status === 204) return null;
+    return response.json();
+}
+
+function mapStudent(student) {
+    return {
+        ...student,
+        id: student.id,
+        studentId: student.studentId || "",
+        firstName: student.firstName || "",
+        lastName: student.lastName || "",
+        dob: student.dob || "",
+        age: student.age ?? "",
+        phone: student.phone || "",
+        group: student.group || "",
+        department: student.department || "",
+        academicYear: student.academicYear || ""
+    };
+}
+
+async function loadStudentsFromApi() {
+    const data = await apiRequest("/students");
+    students = data.map(mapStudent);
+    renderStudents();
+}
+
+document.getElementById("loginForm").addEventListener("submit", async event => {
     event.preventDefault();
+
     const username = document.getElementById("loginUsername").value.trim();
     const password = document.getElementById("loginPassword").value;
+    const loginMessage = document.getElementById("loginMessage");
 
-    let role = null;
-    if ((username === "admin1" || username === "admin2") && password === "admin@123") {
-        role = "admin";
-    } else if (username === "STUDENT" && password === "STUDENT123") {
-        role = "student";
+    loginMessage.textContent = "Logging in...";
+    loginMessage.className = "message";
+
+    try {
+        const result = await apiRequest("/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ username, password })
+        });
+
+        authToken = result.token;
+        currentRole = String(result.role).toLowerCase();
+
+        await loadStudentsFromApi();
+
+        loginPanel.hidden = true;
+        appContent.hidden = false;
+        sessionControls.hidden = false;
+        loggedInLabel.textContent = `Logged in: ${result.username}`;
+        exportButton.hidden = currentRole !== "admin";
+        document.getElementById("studentId").readOnly = false;
+
+        loginMessage.textContent = "";
+        showMessage("Login successful.");
+    } catch (error) {
+        authToken = null;
+        currentRole = null;
+        loginMessage.textContent = `Login failed: ${error.message}. Check your credentials and backend.`;
+        loginMessage.className = "message error";
     }
-
-    if (!role) {
-        document.getElementById("loginMessage").textContent = "Invalid username or password.";
-        document.getElementById("loginMessage").className = "message error";
-        return;
-    }
-
-    currentRole = role;
-    loginPanel.hidden = true;
-    appContent.hidden = false;
-    sessionControls.hidden = false;
-    loggedInLabel.textContent = role === "admin" ? `Logged in: ${username}` : "Logged in: STUDENT";
-    exportButton.hidden = role !== "admin";
-    document.getElementById("studentId").readOnly = false;
-    renderStudents();
 });
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
+    authToken = null;
     currentRole = null;
+    students = [];
+
     if (editingStudentId !== null) finishEditMode();
+
     document.getElementById("loginForm").reset();
     document.getElementById("loginMessage").textContent = "";
     appContent.hidden = true;
     loginPanel.hidden = false;
     sessionControls.hidden = true;
+    renderStudents();
 });
 
-function isAdmin() { return currentRole === "admin"; }
-
-function loadStudents() {
-    try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    } catch (error) {
-        return [];
-    }
+function isAdmin() {
+    return currentRole === "admin";
 }
-
-function saveStudents() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
-}
+ 
 
 function showMessage(text, type = "success") {
     message.textContent = text;
@@ -315,14 +374,27 @@ function renderStudents() {
                 deleteButton.type = "button";
                 deleteButton.className = "delete-button table-action-button";
                 deleteButton.textContent = "Delete";
-                deleteButton.addEventListener("click", () => {
-                    if (!isAdmin()) return showMessage("Only Admin can delete students.", "error");
-                    if (!confirm(`Delete student ${student.studentId}?`)) return;
-                    students = students.filter(item => item.studentId !== student.studentId);
-                    saveStudents();
-                    renderStudents();
-                    showMessage("Student deleted successfully.");
-                });
+                
+deleteButton.addEventListener("click", async () => {
+    if (!isAdmin()) {
+        showMessage("Only Admin can delete students.", "error");
+        return;
+    }
+
+    if (!confirm(`Delete student ${student.studentId}?`)) return;
+
+    try {
+        await apiRequest(`/students/${student.id}`, {
+            method: "DELETE"
+        });
+
+        await loadStudentsFromApi();
+        showMessage("Student deleted successfully.");
+    } catch (error) {
+        showMessage(`Delete failed: ${error.message}`, "error");
+    }
+});
+
                 actionCell.appendChild(deleteButton);
             } else {
                 actionCell.textContent = "View only";
@@ -333,12 +405,15 @@ function renderStudents() {
     updateDashboard();
 }
 
-form.addEventListener("submit", event => {
+
+form.addEventListener("submit", async event => {
     event.preventDefault();
-    if (currentRole !== "admin" && currentRole !== "student") {
+
+    if (!currentRole) {
         showMessage("Please log in first.", "error");
         return;
     }
+
     if (editingStudentId !== null && !isAdmin()) {
         showMessage("Only Admin can edit student details.", "error");
         return;
@@ -372,7 +447,8 @@ form.addEventListener("submit", event => {
     }
 
     const duplicate = students.some(item =>
-        item.studentId.toLowerCase() === student.studentId.toLowerCase() &&
+        String(item.studentId).toLowerCase() ===
+            student.studentId.toLowerCase() &&
         item.studentId !== editingStudentId
     );
 
@@ -381,22 +457,37 @@ form.addEventListener("submit", event => {
         return;
     }
 
-    if (editingStudentId !== null) {
-        const index = students.findIndex(item => item.studentId === editingStudentId);
-        if (index !== -1) students[index] = student;
-        finishEditMode();
-        saveStudents();
-        renderStudents();
+    try {
+        if (editingStudentId !== null) {
+            const existing = students.find(
+                item => item.studentId === editingStudentId
+            );
+
+            if (!existing || existing.id == null) {
+                throw new Error("Could not find the database record to update.");
+            }
+
+            await apiRequest(`/students/${existing.id}`, {
+                method: "PUT",
+                body: JSON.stringify(student)
+            });
+
+            finishEditMode();
+            showMessage("Student details updated successfully.");
+        } else {
+            await apiRequest("/students", {
+                method: "POST",
+                body: JSON.stringify(student)
+            });
+
+            showMessage("Student added successfully.");
+        }
+
         form.reset();
         ageInput.value = "";
-        showMessage("Student details updated successfully.");
-    } else {
-        students.push(student);
-        saveStudents();
-        renderStudents();
-        form.reset();
-        ageInput.value = "";
-        showMessage("Student added successfully.");
+        await loadStudentsFromApi();
+    } catch (error) {
+        showMessage(`Save failed: ${error.message}`, "error");
     }
 });
 

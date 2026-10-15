@@ -1,5 +1,10 @@
+
 target/
-.idea/
-.vscode/
-*.log
+alpha 1/
+error-log.txt
 .env
+.env.*
+!.env.example
+*.log
+frontend/script-backup.js
+frontend/script-backup-before-api.js
