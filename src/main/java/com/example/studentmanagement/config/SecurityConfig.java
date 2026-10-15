@@ -1,4 +1,4 @@
-
+```java
 package com.example.studentmanagement.config;
 
 import com.example.studentmanagement.security.TokenAuthenticationFilter;
@@ -38,7 +38,7 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/login", "/error").permitAll()
+                .requestMatchers("/", "/error", "/api/auth/login").permitAll()
 
                 .requestMatchers(HttpMethod.GET, "/api/students/**")
                     .hasAnyRole("ADMIN", "STUDENT")
@@ -70,7 +70,8 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of(
             "http://localhost:5500",
             "http://127.0.0.1:5500",
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "https://student-management-system-934v.onrender.com"
         ));
 
         config.setAllowedMethods(List.of(
@@ -89,3 +90,4 @@ public class SecurityConfig {
         return source;
     }
 }
+```

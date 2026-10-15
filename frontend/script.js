@@ -6,7 +6,7 @@ const dobInput = document.getElementById("dob");
 const ageInput = document.getElementById("age");
 
 
-const API_BASE = "http://localhost:8082/api";
+const API_BASE = "https://student-management-system-934v.onrender.com/api";
 
 let students = [];
 let dashboardFilter = "all";
